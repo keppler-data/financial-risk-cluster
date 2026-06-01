@@ -1,0 +1,57 @@
+services:
+
+  postgres:
+    image: postgres:15-alpine
+
+    container_name: financial-risk-postgres
+
+    restart: always
+
+    shm_size: 256mb
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ}
+
+    ports:
+      - "6432:6432"
+
+    volumes:
+      - financial_risk_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - financial-risk-network
+
+  adminer:
+    image: adminer:latest
+
+    container_name: financial-risk-adminer
+
+    restart: always
+
+    ports:
+      - "8081:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - financial-risk-network
+
+
+volumes:
+  financial_risk_postgres_data:
+
+
+networks:
+  financial-risk-network:
+    external: true

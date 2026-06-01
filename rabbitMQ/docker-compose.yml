@@ -1,0 +1,39 @@
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+
+    container_name: financial-risk-rabbitmq
+
+    restart: always
+
+    hostname: rabbitmq
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    volumes:
+      - financial_risk_rabbitmq_data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+    networks:
+      - financial-risk-network
+
+volumes:
+  financial_risk_rabbitmq_data:
+
+networks:
+  financial-risk-network:
+    external: true

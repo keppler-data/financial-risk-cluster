@@ -1,0 +1,81 @@
+services:
+
+  airflow-init:
+    image: apache/airflow:3.0.2
+
+    container_name: airflow-init
+
+    env_file:
+      - .env
+
+    command: >
+      bash -c "
+      airflow db migrate
+      "
+
+    networks:
+      - financial-risk-network
+
+  airflow-api-server:
+    image: apache/airflow:3.0.2
+
+    container_name: airflow-api-server
+
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    command: api-server
+
+    ports:
+      - "8082:8080"
+
+    networks:
+      - financial-risk-network
+
+  airflow-scheduler:
+    image: apache/airflow:3.0.2
+
+    container_name: airflow-scheduler
+
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    command: scheduler
+
+    networks:
+      - financial-risk-network
+
+  airflow-worker:
+    image: apache/airflow:3.0.2
+
+    container_name: airflow-worker
+
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+    command: celery worker
+
+    networks:
+      - financial-risk-network
+
+networks:
+  financial-risk-network:
+    external: true
