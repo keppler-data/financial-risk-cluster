@@ -1,0 +1,41 @@
+services:
+  # ---------------------------------------------------------
+  # SERVICIO: Nginx Proxy Manager (El Portero del Clúster)
+  # ---------------------------------------------------------
+  proxy:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy
+
+    # Tolerancia a fallos: Reinicia siempre, a menos que tú lo apagues manualmente con 'docker compose stop'
+    restart: unless-stopped
+
+    # VARIABLES DE ENTORNO
+    # PUID y PGID aseguran que los archivos creados por Docker en el lado izquierdo 
+    # (tu instancia EC2) le pertenezcan al usuario 1000 (ubuntu), evitando bloqueos de 'root'.
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+
+    # PUERTOS (Izquierda:AWS -> Derecha:Contenedor)
+    # Exponemos los puertos críticos al internet público (a través del Security Group)
+    ports:
+      - '80:80' # Tráfico HTTP estándar (redirecciones)
+      - '443:443' # Tráfico seguro HTTPS (vital para los certificados de Cloudflare)
+      - '81:81' # Interfaz de administración (donde configuras tus subdominios)
+
+    # VOLÚMENES (Bind Mounts)
+    # Como NPM usa SQLite por defecto, TODO (configuraciones, base de datos, usuarios) 
+    # se guarda en la carpeta '/data' interna. Al conectarla con el './data' físico, 
+    # garantizamos que si el proxy muere, no pierdes tus dominios.
+    volumes:
+      - /opt/data/proxy/data:/data
+      - /opt/data/proxy/letsencrypt:/etc/letsencrypt
+
+    # HEALTHCHECK
+    # Un script interno prefabricado por los creadores de la imagen para 
+    # asegurar que el servidor web interno responde correctamente.
+    healthcheck:
+      test: [ "CMD", "/bin/check-health" ]
+      interval: 10s
+      timeout: 3s

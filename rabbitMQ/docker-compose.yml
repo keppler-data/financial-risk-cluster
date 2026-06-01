@@ -1,39 +1,52 @@
 services:
-
+  # ---------------------------------------------------------
+  # SERVICIO: RabbitMQ (El Bus de Mensajería / Sistema Nervioso)
+  # ---------------------------------------------------------
   rabbitmq:
+    # Usamos la versión 'alpine' por seguridad (menos peso, menos vulnerabilidades)
+    # La etiqueta 'management' incluye la interfaz visual web.
     image: rabbitmq:3.13-management-alpine
-
-    container_name: financial-risk-rabbitmq
-
+    container_name: core-broker
     restart: always
 
-    hostname: rabbitmq
-
+    # VARIABLES DE ENTORNO
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST}
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+      # Credenciales seguras (nunca usar 'guest/guest' en la nube)
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+
+      # VHOST: Creamos un "espacio" dedicado solo para Airflow. Si mañana 
+      # pones otro servicio a usar este RabbitMQ, le creas otro VHost para que no crucen datos.
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
+
+      # ERLANG COOKIE: Vital para escalar. Si Airflow crece mucho y necesitas 
+      # 2 instancias de RabbitMQ para repartir la carga de mensajes, ambas 
+      # instancias deben tener esta misma "galleta" para poder hablar entre sí.
+      - RABBITMQ_ERLANG_COOKIE=${RABBITMQ_ERLANG_COOKIE}
+      # Le indicamos a la interfaz nativa de RabbitMQ que su ruta base ya no es la raíz (/),
+      # sino la que definimos en el archivo .env, para que construya bien sus enlaces internos.
+      # - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_management path_prefix "${RABBITMQ_BASE_PATH}"
+      # Esto está pendiente para mas adelante
 
     ports:
+      # Puerto 5672: Es el puerto de máquina-a-máquina (AMQP). 
+      # Por aquí el Master envía las tareas y los Workers las recogen.
       - "5672:5672"
+
+      # Puerto 15672: Es la interfaz visual web. Tu Nginx Proxy tomará el 
+      # dominio 'orion-rabbit' y lo enviará a este puerto.
       - "15672:15672"
 
     volumes:
-      - financial_risk_rabbitmq_data:/var/lib/rabbitmq
+      # BIND MOUNT (Izquierda Física : Derecha Contenedor)
+      # Guardamos los mensajes en cola directamente en tu disco EC2. 
+      # Si la instancia se reinicia, los workers no pierden los trabajos pendientes.
+      - /opt/data/keppler/rabbitmq/rabbitmq_data:/var/lib/rabbitmq
 
+    # HEALTHCHECK: Fundamental. El Worker de Airflow no debe arrancar 
+    # si RabbitMQ no le dice "Estoy 100% listo para recibir mensajes".
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: rabbitmq-diagnostics -q ping
       interval: 30s
       timeout: 10s
       retries: 5
-
-    networks:
-      - financial-risk-network
-
-volumes:
-  financial_risk_rabbitmq_data:
-
-networks:
-  financial-risk-network:
-    external: true
