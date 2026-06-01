@@ -29,8 +29,8 @@ services:
     # se guarda en la carpeta '/data' interna. Al conectarla con el './data' físico, 
     # garantizamos que si el proxy muere, no pierdes tus dominios.
     volumes:
-      - /opt/data/proxy/data:/data
-      - /opt/data/proxy/letsencrypt:/etc/letsencrypt
+      - /opt/keppler/data/proxy/data:/data
+      - /opt/keppler/data/proxy/letsencrypt:/etc/letsencrypt
 
     # HEALTHCHECK
     # Un script interno prefabricado por los creadores de la imagen para 

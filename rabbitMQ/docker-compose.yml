@@ -41,7 +41,7 @@ services:
       # BIND MOUNT (Izquierda Física : Derecha Contenedor)
       # Guardamos los mensajes en cola directamente en tu disco EC2. 
       # Si la instancia se reinicia, los workers no pierden los trabajos pendientes.
-      - /opt/data/keppler/rabbitmq/rabbitmq_data:/var/lib/rabbitmq
+      - /opt/keppler/data/rabbitmq/rabbitmq_data:/var/lib/rabbitmq
 
     # HEALTHCHECK: Fundamental. El Worker de Airflow no debe arrancar 
     # si RabbitMQ no le dice "Estoy 100% listo para recibir mensajes".

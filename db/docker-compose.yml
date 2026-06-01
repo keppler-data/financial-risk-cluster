@@ -36,7 +36,7 @@ services:
     # y se guarda en la ruta /var/lib/docker/volumes/alzheimer_db_vol/_data
     # Si se corre el comando docker compose down -v, el volumen se borrará y se pierde la DB
     volumes:
-      - /opt/data/vols-keppler/database/db_keppler:/var/lib/postgresql/data
+      - /opt/keppler/data/database/keppler_metadata:/var/lib/postgresql/data
 
     # HEALTHCHECK (Chequeo de salud)
     # Un contenedor "corriendo" no significa que esté "listo para recibir conexiones".
