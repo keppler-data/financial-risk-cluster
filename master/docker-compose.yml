@@ -27,12 +27,12 @@ x-airflow-common: &airflow-common
     # MAPEO DE VOLÚMENES: Izquierda es la máquina Host (EC2), Derecha es el contenedor interno.
     # Ruta EC2 : Ruta Contenedor : Permiso (ro = read-only)
 
-    - /home/ubunt/keppler/data-platform/pipelines/dags/:/opt/airflow/dags # para encontrar los dags
+    - /home/ubuntu/keppler/data-platform/pipelines/dags/:/opt/airflow/dags # para encontrar los dags
     - ./logs:/opt/airflow/logs # al dag_processor mete los dags por esta ruta
     - ./config:/opt/airflow/config # para guardar la configuración
     # - /opt/keppler/data-platform/plugins:/opt/airflow/plugins # para encontrar los plugins
     # volumen para entorno virtual
-    - /home/ubuntu/keppler/data-platform/.venv:/opt/airflow/.venv
+    # - /home/ubuntu/keppler/data-platform/.venv:/opt/airflow/.venv # sirve para cuando haga los entornos virtuales
 
 services:
   # ==============================================================================
