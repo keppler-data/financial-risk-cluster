@@ -1,1 +1,68 @@
+# ==========================================
+# 1. APACHE AIRFLOW (Infraestructura)
+# ==========================================
+# Ignorar logs por completo (pesados e irrelevantes para el código)
+logs/
+
+# Ignorar la carpeta config por seguridad, pero mantener la estructura
+config/*
+!config/.gitkeep
+# Descomenta la siguiente línea si quieres versionar la configuración de la UI (asegúrate de que no tenga passwords)
+# !config/webserver_config.py
+
+# Ignorar bases de datos locales autogeneradas (si llegaras a usar SQLite en pruebas)
+*.db
+airflow.db
+airflow-webserver.pid
+
+# ==========================================
+# 2. DOCKER, SECRETOS Y CREDENCIALES
+# ==========================================
+# NUNCA subir archivos de entorno
 .env
+.env.*
+!.env.example # Es buena práctica tener un archivo de ejemplo sin datos reales
+
+# Claves SSH, certificados y archivos de encriptación
+*.pem
+*.key
+*.cert
+*.rsa
+fernet_key.txt
+
+# ==========================================
+# 3. ENTORNOS VIRTUALES PYTHON
+# ==========================================
+.venv/
+venv/
+env/
+ENV/
+
+# ==========================================
+# 4. ARCHIVOS CACHÉ Y COMPILADOS DE PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==========================================
+# 5. SISTEMA OPERATIVO Y EDITORES DE CÓDIGO
+# ==========================================
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+$RECYCLE.BIN/
+
+# VS Code / IntelliJ
+.vscode/
+.idea/
+*.swp
