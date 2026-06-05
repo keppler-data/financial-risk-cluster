@@ -29,7 +29,7 @@ x-airflow-common:
 
     # DAGs locales de esta instancia EC2
     # El worker NECESITA tener acceso físico al código DAG
-    - /opt/keppler/data-platform/pipelines/dags:/opt/airflow/dags # para encontrar los dags
+    - /home/ubuntu/keppler/data-platform/pipelines/dags:/opt/airflow/dags # para encontrar los dags
 
     # Plugins Airflow compartidos
     # - /opt/dags-alzheimer/plugins:/opt/airflow/plugins:ro
@@ -41,7 +41,7 @@ x-airflow-common:
     - ./config:/opt/airflow/config
 
     # volumen para entorno virtual
-    - /opt/keppler/data-platform/.venv:/opt/airflow/.venv
+    # - /opt/keppler/data-platform/.venv:/opt/airflow/.venv
 
 services:
 
