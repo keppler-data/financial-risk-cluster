@@ -2,7 +2,7 @@
 # 1. APACHE AIRFLOW (Infraestructura)
 # ==========================================
 # Ignorar logs por completo (pesados e irrelevantes para el código)
-logs/
+logs/*
 
 # Ignorar la carpeta config por seguridad, pero mantener la estructura
 config/*
