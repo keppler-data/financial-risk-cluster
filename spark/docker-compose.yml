@@ -1,7 +1,7 @@
 services:
 
   spark-master:
-    image: apache/spark:3.5.6
+    image: apache/spark:3.5.5
 
     container_name: financial-risk-spark-master
 
@@ -18,24 +18,43 @@ services:
     volumes:
       - ./jobs:/opt/spark/jobs
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
     restart: unless-stopped
 
   spark-worker:
-    image: apache/spark:3.5.6
+    image: apache/spark:3.5.5
 
     container_name: financial-risk-spark-worker
 
     hostname: financial-risk-spark-worker
 
     depends_on:
-      - spark-master
+      spark-master:
+        condition: service_healthy
 
     command: >
       /opt/spark/bin/spark-class
       org.apache.spark.deploy.worker.Worker
       spark://financial-risk-spark-master:7077
 
+    environment:
+      SPARK_WORKER_MEMORY: 1G
+      SPARK_WORKER_CORES: 1
+
     volumes:
       - ./jobs:/opt/spark/jobs
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://financial-risk-spark-master:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
     restart: unless-stopped
