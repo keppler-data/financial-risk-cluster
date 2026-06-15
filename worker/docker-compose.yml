@@ -54,7 +54,7 @@ services:
     <<: *airflow-common
 
     # Nombre visible del contenedor Docker
-    container_name: airflow-worker-1
+    container_name: airflow-${NAME_DOCKER}
 
     # Hostname interno Linux del contenedor
     hostname: ${CELERY_HOSTNAME}
