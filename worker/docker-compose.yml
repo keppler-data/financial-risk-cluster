@@ -59,6 +59,10 @@ services:
     # Hostname interno Linux del contenedor
     hostname: ${CELERY_HOSTNAME}
 
+    # puerto de los logs
+    ports:
+      - "8793:8793"
+
     # ----------------------------------------------------------------------------
     # Comando principal del contenedor
     #
