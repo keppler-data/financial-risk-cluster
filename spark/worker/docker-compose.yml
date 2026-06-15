@@ -1,18 +1,37 @@
+# ==============================================================================
+# CLÚSTER SPARK - MÓDULO WORKER (EC2 WORKER)
+# ==============================================================================
+
 services:
-
   spark-worker:
-    image: apache/spark:latest
-
-    container_name: financial-risk-spark-worker
-
-    command: >
-      /opt/spark/bin/spark-class
-      org.apache.spark.deploy.worker.Worker
-      spark://financial-risk-spark-master:7077
-
-    networks:
-      - financial-risk-network
-
-networks:
-  financial-risk-network:
-    external: true
+    image: bitnami/spark:${SPARK_VERSION}
+    container_name: core-spark-worker
+    environment:
+      - SPARK_MODE=worker
+      # Apuntamos a la IP de la otra instancia EC2
+      - SPARK_MASTER_URL=spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
+      - SPARK_WORKER_CORES=${SPARK_WORKER_CORES}
+      - SPARK_WORKER_MEMORY=${SPARK_WORKER_MEMORY}
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - TZ=${TZ}
+    ports:
+      - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker
+    volumes:
+      # Es CRÍTICO que los workers tengan los mismos archivos en las mismas rutas 
+      # para que el driver pueda distribuir las tareas correctamente.
+      - /home/ubuntu/keppler/data-platform/pipelines/scripts:/opt/bitnami/spark/scripts
+      - /home/ubuntu/keppler/data/volume:/opt/bitnami/spark/data
+      # Logs locales del worker
+      - /opt/keppler/data/spark/worker-logs:/opt/bitnami/spark/logs
+    restart: always
+    # Nota: No hay depends_on aquí porque el master está en otra máquina física.
+    # El worker reintentará la conexión automáticamente.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
