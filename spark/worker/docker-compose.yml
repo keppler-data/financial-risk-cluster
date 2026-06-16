@@ -29,6 +29,8 @@ services:
     
     # Consistencia absoluta con el usuario 'ubuntu' (UID/GID 1000)
     user: "0:0"
+    # Comparte la interfaz de red real de tu instancia de AWS
+    network_mode: host
     
     # Comando oficial apuntando al Master remoto por su IP Privada
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
