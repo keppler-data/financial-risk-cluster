@@ -13,7 +13,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - TZ=${TZ}
-    user: "1000:0" # ubuntu:root
+    user: "0:0" # ubuntu:root
     ports:
       - "${SPARK_MASTER_PORT}:7077"      # Comunicación RPC
       - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web (Maquetada al 8181 externo)

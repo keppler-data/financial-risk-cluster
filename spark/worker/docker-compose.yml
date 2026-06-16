@@ -17,7 +17,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - TZ=${TZ}
-    user: "1000:0" # ubuntu:root
+    user: "0:0" # ubuntu:root
     ports:
       - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker
     volumes:
