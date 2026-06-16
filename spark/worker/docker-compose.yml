@@ -17,16 +17,16 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - TZ=${TZ}
+    user: "1000:0" # ubuntu:root
     ports:
       - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker
     volumes:
-      # Es CRÍTICO que los workers tengan los mismos archivos en las mismas rutas 
-      # para que el driver pueda distribuir las tareas correctamente.
-      - /home/ubuntu/keppler/data-platform/pipelines/scripts:/opt/bitnami/spark/scripts
-      - /home/ubuntu/keppler/data/volume:/opt/bitnami/spark/data
+      # Sincronizado con la estructura del master
+      - /home/ubuntu/keppler/data-platform/pipelines:/opt/bitnami/spark/pipelines:ro
+      - /home/ubuntu/keppler/data/volumes/spark/workers/data:/opt/bitnami/spark/data
       # Logs locales del worker
-      - /opt/keppler/data/spark/worker-logs:/opt/bitnami/spark/logs
-    restart: always
+      - /home/ubuntu/keppler/data/volumes/spark/workers/logs:/opt/bitnami/spark/logs
+    restart: unless-stopped
     # Nota: No hay depends_on aquí porque el master está en otra máquina física.
     # El worker reintentará la conexión automáticamente.
     healthcheck:
