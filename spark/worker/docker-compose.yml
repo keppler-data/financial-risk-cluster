@@ -2,15 +2,35 @@
 # CLÚSTER SPARK OFICIAL - MÓDULO WORKER (EC2 WORKER)
 # ==============================================================================
 
+# Nombre de proyecto fijo para aislar este stack en el motor Docker del Worker
+name: keppler-spark-worker
+
 services:
+
+  # ----------------------------------------------------------------------------
+  # CONTENEDOR DE INICIALIZACIÓN: Corrige permisos del disco local de la EC2 Worker
+  # ----------------------------------------------------------------------------
+  fix-permissions:
+    image: alpine:latest
+    user: "0:0" # Ejecución temporal como root absoluto
+    container_name: spark-worker-init
+    volumes:
+      # Mapeamos la raíz local de datos de esta instancia Worker
+      - /home/ubuntu/keppler/data:/mnt/data
+    # Reasigna recursivamente la propiedad al usuario ubuntu de la EC2 y finaliza
+    command: chown -R 1000:1000 /mnt/data
+
+  # ----------------------------------------------------------------------------
+  # SERVICIO PRINCIPAL: Spark Worker
+  # ----------------------------------------------------------------------------
   spark-worker:
     image: apache/spark:${SPARK_VERSION}
     container_name: core-spark-worker
     
-    # Consistencia absoluta con el usuario 'ubuntu' de tu EC2
+    # Consistencia absoluta con el usuario 'ubuntu' (UID/GID 1000)
     user: "1000:1000"
     
-    # Comando oficial apuntando al Master remoto por IP Privada
+    # Comando oficial apuntando al Master remoto por su IP Privada
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
 
     environment:
@@ -20,21 +40,27 @@ services:
       - SPARK_WORKER_WEBUI_PORT=8081
       - SPARK_WORKER_PORT=${SPARK_WORKER_PORT}
       
-      # IP Privada de la EC2 Worker para la comunicación en doble vía de AWS
+      # IP Privada de la EC2 Worker para la comunicación de retorno (AWS VPC Intra-routing)
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
     ports:
-      - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker (Mapeada al 8182 externo)
-      - "${SPARK_WORKER_PORT}:${SPARK_WORKER_PORT}" # Puerto de comunicación interna fijo (8881)
+      - "${SPARK_WORKER_WEBUI_PORT}:8081"         # UI Web del Worker (Mapeada al 8182 externo)
+      - "${SPARK_WORKER_PORT}:${SPARK_WORKER_PORT}" # Puerto fijo de entrada interna (8881)
 
     volumes:
+      # Montajes limpios y validados bajo la estructura de Apache Spark
       - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
       - /home/ubuntu/keppler/data/volumes/spark/workers/data:/opt/spark/work
       - /home/ubuntu/keppler/data/volumes/spark/workers/logs:/opt/spark/logs
 
     restart: unless-stopped
 
-    # CORREGIDO: Formato de lista nativa para evitar fallos de escape de comillas
+    # CRUCIAL: Bloqueo de secuencia. No arranca Spark hasta que el chown termine con éxito
+    depends_on:
+      fix-permissions:
+        condition: service_completed_successfully
+
+    # Lista ejecutiva nativa libre de errores de escape de caracteres
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081')"]
       interval: 20s
