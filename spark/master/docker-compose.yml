@@ -35,6 +35,8 @@ services:
       - TZ=${TZ}
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
+      # Forzamos al Master a anunciarse ante los Workers con su IP real de AWS
+      - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
     ports:
       - "${SPARK_MASTER_PORT}:7077"       # Comunicación RPC interna para Workers
