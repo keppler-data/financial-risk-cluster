@@ -28,7 +28,7 @@ services:
     container_name: core-spark-worker
     
     # Consistencia absoluta con el usuario 'ubuntu' (UID/GID 1000)
-    user: "1000:1000"
+    user: "0:0"
     
     # Comando oficial apuntando al Master remoto por su IP Privada
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
