@@ -1,37 +1,43 @@
 # ==============================================================================
-# CLÚSTER SPARK - MÓDULO WORKER (EC2 WORKER)
+# CLÚSTER SPARK OFICIAL - MÓDULO WORKER (EC2 WORKER)
 # ==============================================================================
 
 services:
   spark-worker:
-    image: bitnami/spark:${SPARK_VERSION}
+    image: apache/spark:${SPARK_VERSION}
     container_name: core-spark-worker
+    
+    # Consistencia absoluta con el usuario 'ubuntu' de tu EC2
+    user: "1000:1000"
+    
+    # Comando oficial apuntando al Master remoto por IP Privada
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
+
     environment:
-      - SPARK_MODE=worker
-      # Apuntamos a la IP de la otra instancia EC2
-      - SPARK_MASTER_URL=spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}
+      - TZ=${TZ}
       - SPARK_WORKER_CORES=${SPARK_WORKER_CORES}
       - SPARK_WORKER_MEMORY=${SPARK_WORKER_MEMORY}
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - TZ=${TZ}
-    user: "0:0" # ubuntu:root
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_PORT=${SPARK_WORKER_PORT}
+      
+      # IP Privada de la EC2 Worker para la comunicación en doble vía de AWS
+      - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
+
     ports:
-      - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker
+      - "${SPARK_WORKER_WEBUI_PORT}:8081" # UI Web del Worker (Mapeada al 8182 externo)
+      - "${SPARK_WORKER_PORT}:${SPARK_WORKER_PORT}" # Puerto de comunicación interna fijo (8881)
+
     volumes:
-      # Sincronizado con la estructura del master
-      - /home/ubuntu/keppler/data-platform/pipelines:/opt/bitnami/spark/pipelines:ro
-      - /home/ubuntu/keppler/data/volumes/spark/workers/data:/opt/bitnami/spark/data
-      # Logs locales del worker
-      - /home/ubuntu/keppler/data/volumes/spark/workers/logs:/opt/bitnami/spark/logs
+      - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
+      - /home/ubuntu/keppler/data/volumes/spark/workers/data:/opt/spark/work
+      - /home/ubuntu/keppler/data/volumes/spark/workers/logs:/opt/spark/logs
+
     restart: unless-stopped
-    # Nota: No hay depends_on aquí porque el master está en otra máquina física.
-    # El worker reintentará la conexión automáticamente.
+
+    # CORREGIDO: Formato de lista nativa para evitar fallos de escape de comillas
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081')"]
       interval: 20s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s

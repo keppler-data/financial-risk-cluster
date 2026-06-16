@@ -1,31 +1,38 @@
 # ==============================================================================
-# CLÚSTER SPARK - MÓDULO MASTER (EC2 MASTER)
+# CLÚSTER SPARK OFICIAL - MÓDULO MASTER (EC2 MASTER)
 # ==============================================================================
 
 services:
   spark-master:
-    image: bitnami/spark:${SPARK_VERSION}
+    image: apache/spark:${SPARK_VERSION}
     container_name: core-spark-master
+    
+    # Consistencia absoluta con el usuario 'ubuntu' de tu EC2 física
+    user: "1000:1000"
+    
+    # Comando oficial de Apache Spark
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    
     environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
       - TZ=${TZ}
-    user: "0:0" # ubuntu:root
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+
     ports:
-      - "${SPARK_MASTER_PORT}:7077"      # Comunicación RPC
-      - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web (Maquetada al 8181 externo)
+      - "${SPARK_MASTER_PORT}:7077"       # Comunicación RPC interna para Workers
+      - "${SPARK_MASTER_WEBUI_PORT}:8080"  # UI Web expuesta externamente
+
     volumes:
-      # Mapeamos la raíz de pipelines: los scripts estarán en /opt/bitnami/spark/pipelines/tasks-spark
-      - /home/ubuntu/keppler/data-platform/pipelines:/opt/bitnami/spark/pipelines:ro
-      - /home/ubuntu/keppler/data/volumes/spark/master/data:/opt/bitnami/spark/data
-      # Logs del master
-      - /home/ubuntu/keppler/data/volumes/spark/master/logs:/opt/bitnami/spark/logs
+      # Mapeos correctos hacia la distribución de Apache
+      - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
+      - /home/ubuntu/keppler/data/volumes/spark/master/data:/opt/spark/work
+      - /home/ubuntu/keppler/data/volumes/spark/master/logs:/opt/spark/logs
+
     restart: unless-stopped
+
+    # CORREGIDO: Healthcheck en formato ejecutivo nativo sin problemas de escape de comillas
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080')"]
       interval: 20s
       timeout: 10s
       retries: 3
