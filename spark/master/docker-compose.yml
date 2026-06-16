@@ -33,14 +33,14 @@ services:
     
     environment:
       - TZ=${TZ}
-      - SPARK_MASTER_PORT=7077
-      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_MASTER_PORT=${SPARK_MASTER_PORT}
+      - SPARK_MASTER_WEBUI_PORT=${SPARK_MASTER_WEBUI_PORT}
       # Forzamos al Master a anunciarse ante los Workers con su IP real de AWS
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
-    ports:
-      - "${SPARK_MASTER_PORT}:7077"       # Comunicación RPC interna para Workers
-      - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web expuesta externamente
+    # ports:
+    #   - "${SPARK_MASTER_PORT}:7077"       # Comunicación RPC interna para Workers
+    #   - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web expuesta externamente
 
     volumes:
       - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
