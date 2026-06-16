@@ -1,21 +1,31 @@
+# ==============================================================================
+# CLÚSTER SPARK - MÓDULO MASTER (EC2 MASTER)
+# ==============================================================================
+
 services:
-
   spark-master:
-    image: apache/spark:latest
-
-    container_name: financial-risk-spark-master
-
-    command: >
-      /opt/spark/bin/spark-class
-      org.apache.spark.deploy.master.Master
-
+    image: bitnami/spark:${SPARK_VERSION}
+    container_name: core-spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - TZ=${TZ}
+    user: "1000:0" # ubuntu:root
     ports:
-      - "7077:7077"
-      - "8080:8080"
-
-    networks:
-      - financial-risk-network
-
-networks:
-  financial-risk-network:
-    external: true
+      - "${SPARK_MASTER_PORT}:7077"      # Comunicación RPC
+      - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web (Maquetada al 8181 externo)
+    volumes:
+      # Mapeamos la raíz de pipelines: los scripts estarán en /opt/bitnami/spark/pipelines/tasks-spark
+      - /home/ubuntu/keppler/data-platform/pipelines:/opt/bitnami/spark/pipelines:ro
+      - /home/ubuntu/keppler/data/volumes/spark/master/data:/opt/bitnami/spark/data
+      # Logs del master
+      - /home/ubuntu/keppler/data/volumes/spark/master/logs:/opt/bitnami/spark/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
