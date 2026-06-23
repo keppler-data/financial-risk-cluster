@@ -31,6 +31,8 @@ x-airflow-common:
     # El worker NECESITA tener acceso físico al código DAG
     - /home/ubuntu/keppler/data-platform/pipelines/dags:/opt/airflow/dags # para encontrar los dags
 
+    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines # mapeo para que python encuentre toda las tareas, junto con pythonpath
+    
     # Plugins Airflow compartidos
     # - /opt/dags-alzheimer/plugins:/opt/airflow/plugins:ro
 

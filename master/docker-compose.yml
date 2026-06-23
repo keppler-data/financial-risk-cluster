@@ -28,6 +28,7 @@ x-airflow-common: &airflow-common
     # Ruta EC2 : Ruta Contenedor : Permiso (ro = read-only)
 
     - /home/ubuntu/keppler/data-platform/pipelines/dags/:/opt/airflow/dags # para encontrar los dags
+    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines # mapeo para que python encuentre toda las tareas, junto con pythonpath
     - ./logs:/opt/airflow/logs # al dag_processor mete los dags por esta ruta
     - ./config:/opt/airflow/config # para guardar la configuración
     # - /opt/keppler/data-platform/plugins:/opt/airflow/plugins # para encontrar los plugins
