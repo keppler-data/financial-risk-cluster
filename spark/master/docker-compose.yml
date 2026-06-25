@@ -29,7 +29,8 @@ services:
     user: "0:0" # Corre seguro como tu usuario ubuntu
     network_mode: host # para que use su ip real
     
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    command: >
+      bash -c "pip3 install --no-cache-dir numpy pandas pyarrow && /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
     
     environment:
       - TZ=${TZ}
