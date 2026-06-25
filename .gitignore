@@ -5,7 +5,7 @@
 logs/*
 
 # Ignorar la carpeta config por seguridad, pero mantener la estructura
-config/*
+config
 !config/.gitkeep
 !config/General-key.pem
 # Descomenta la siguiente línea si quieres versionar la configuración de la UI (asegúrate de que no tenga passwords)
