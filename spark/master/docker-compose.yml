@@ -30,7 +30,9 @@ services:
     environment:
       - TZ=${TZ}
       - HOME=/opt/spark/work
-      - SPARK_USER=spark
+      - SPARK_USER=ubuntu
+      - HADOOP_USER_NAME=ubuntu
+      - SPARK_DAEMON_JAVA_OPTS=-Duser.name=ubuntu
       - SPARK_MASTER_PORT=${SPARK_MASTER_PORT}
       - SPARK_MASTER_WEBUI_PORT=${SPARK_MASTER_WEBUI_PORT}
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}

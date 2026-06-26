@@ -1,4 +1,4 @@
-# 🌌 Keppler Financial Risk Cluster
+# t gi🌌 Keppler Financial Risk Cluster
 
 Bienvenido al repositorio de configuración de infraestructura distribuida para **Keppler Data**. Este repositorio contiene la definición como código (Docker Compose) de un clúster analítico de alto rendimiento orquestado con **Apache Airflow 3** y **Apache Spark 4**.
 
@@ -14,7 +14,7 @@ El clúster está diseñado para operar en un entorno distribuido sobre AWS (Ama
 graph TD
     %% Usuarios y Puntos de Entrada
     User([Analista / Data Engineer]) -->|HTTPS| Proxy[🌐 EC2: Nginx Proxy Manager]
-    
+  
     subgraph Control Plane [EC2: Master Node]
         AF_Master[Airflow Webserver & Scheduler]
         SP_Master[Spark Master]
@@ -73,7 +73,7 @@ El clúster está dividido lógicamente en los siguientes servicios y repositori
 
 ## 🔐 Integración con AWS (IAM y S3)
 
-La seguridad es primordial. Este clúster ha sido configurado para **no utilizar credenciales hardcodeadas** (`AWS_ACCESS_KEY_ID`). 
+La seguridad es primordial. Este clúster ha sido configurado para **no utilizar credenciales hardcodeadas** (`AWS_ACCESS_KEY_ID`).
 En su lugar, los contenedores delegan la autenticación a través de la red nativa usando **AWS IAM Roles** adjuntos a las instancias EC2.
 
 **Persistencia de Logs:**
@@ -100,9 +100,10 @@ Para evitar la pérdida de datos y garantizar que Docker respete los permisos de
 
 ## 🚀 Secuencia de Despliegue y Arranque
 
-Dado que los componentes dependen entre sí (ej. Airflow no puede iniciar sin una Base de Datos), el orden de encendido es crítico. 
+Dado que los componentes dependen entre sí (ej. Airflow no puede iniciar sin una Base de Datos), el orden de encendido es crítico.
 
 ### 1. Preparación de la Máquina Base (En cada nodo)
+
 Antes de ejecutar Docker, crea la estructura física y clona los repositorios para evitar que Docker asuma permisos de `root`:
 
 ```bash
@@ -124,14 +125,16 @@ git clone -b reconfig https://github.com/keppler-data/financial-risk-cluster.git
 ```
 
 ### 2. Configuración de Variables y Sincronización de Nodos
+
 Dado que los repositorios proveen configuraciones base, es **crítico** que en los archivos `.env` (especialmente en los Workers) inyectes las direcciones IP reales de tu infraestructura de AWS:
+
 - **Bases de Datos:** `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` y `AIRFLOW__CELERY__RESULT_BACKEND` (Apuntan a la IP de la EC2 de Postgres).
 - **Broker:** `AIRFLOW__CELERY__BROKER_URL` (Apunta a la IP de la EC2 de RabbitMQ).
 - **Master:** `SPARK_MASTER_HOST` y `AIRFLOW__CORE__EXECUTION_API_SERVER_URL` (Apuntan a la IP de la EC2 Master).
 - **Red Local:** `CELERY_HOSTNAME` y `MY_PRIVATE_IP` (Deberás poner la IP Privada exacta de la EC2 **en donde** estás ejecutando el archivo).
 
 **Sincronización del Código Fuente (DAGs y Scripts):**
-Es indispensable que las carpetas clonadas de `data-platform/pipelines` sean idénticas en todas las EC2 (Master y Workers). 
+Es indispensable que las carpetas clonadas de `data-platform/pipelines` sean idénticas en todas las EC2 (Master y Workers).
 *Nota de Supervivencia:* Airflow 3 penaliza severamente los desajustes; si el Master despacha una tarea y el Worker no tiene el archivo `.py` exacto en su disco, la tarea entrará en un bucle eterno de `UP_FOR_RESCHEDULE` seguido de fallos. ¡Asegúrate de hacer `git pull` en la misma rama en todas las máquinas!
 
 ### 3. Orden de Encendido (`docker compose up -d`)
@@ -153,6 +156,7 @@ Inicia los servicios navegando a sus respectivas carpetas dentro de `cluster-con
 ---
 
 ## 🤖 Contexto para Desarrollo Asistido por IA (Data Platform)
+
 Si vas a usar este documento como contexto para que una IA te ayude a programar en tu repositorio de `data-platform`, asegúrate de que la IA sepa lo siguiente:
 
 1. **Versiones Core:** El clúster corre **Apache Airflow 3.x**, **Apache Spark 4.0.2**, **Python 3.12** y **Java 21**. Todo el código debe ser moderno y compatible con estas versiones (ej. usar TaskFlow API en Airflow y evitar librerías obsoletas).
@@ -163,4 +167,5 @@ Si vas a usar este documento como contexto para que una IA te ayude a programar 
 4. **Dependencias de Python (Pip):** Si los jobs de Spark requieren librerías de Python de terceros, asegúrate de instalarlas en los contenedores o empaquetarlas, ya que los Workers están configurados con `pip install numpy pandas pyarrow` por defecto.
 
 ---
+
 *Desarrollado y optimizado con ❤️ para cargas analíticas distribuidas.*
