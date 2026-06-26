@@ -1,38 +1,26 @@
-# ==============================================================================
-# CLÚSTER SPARK OFICIAL - MÓDULO WORKER (EC2 WORKER)
-# ==============================================================================
-
-# Nombre de proyecto fijo para aislar este stack en el motor Docker del Worker
-name: keppler-spark-worker
-
 services:
-
-  # ----------------------------------------------------------------------------
-  # CONTENEDOR DE INICIALIZACIÓN: Corrige permisos del disco local de la EC2 Worker
-  # ----------------------------------------------------------------------------
+  # ==============================================================================
+  # 1. INIT: Reparación de permisos
+  # ==============================================================================
   fix-permissions:
     image: alpine:latest
-    user: "0:0" # Ejecución temporal como root absoluto
+    user: "0:0"
     container_name: spark-worker-init
     volumes:
-      # Mapeamos la raíz local de datos de esta instancia Worker
       - /home/ubuntu/keppler/data:/mnt/data
-    # Reasigna recursivamente la propiedad al usuario ubuntu de la EC2 y finaliza
     command: chown -R 1000:1000 /mnt/data
 
-  # ----------------------------------------------------------------------------
-  # SERVICIO PRINCIPAL: Spark Worker
-  # ----------------------------------------------------------------------------
+  # ==============================================================================
+  # 2. SERVICIO PRINCIPAL: Spark Worker
+  # ==============================================================================
   spark-worker:
     image: apache/spark:${SPARK_VERSION}
     container_name: core-spark-worker
     
-    # Consistencia absoluta con el usuario 'ubuntu' (UID/GID 1000)
-    user: "0:0"
-    # Comparte la interfaz de red real de tu instancia de AWS
+    # Corregido: Corre como ubuntu (1000) protegiendo el sistema de la EC2
+    user: "1000:0"
     network_mode: host
     
-    # Comando oficial apuntando al Master remoto por su IP Privada
     command: >
       bash -c "pip3 install --no-cache-dir numpy pandas pyarrow && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}"
 
@@ -40,33 +28,31 @@ services:
       - TZ=${TZ}
       - SPARK_WORKER_CORES=${SPARK_WORKER_CORES}
       - SPARK_WORKER_MEMORY=${SPARK_WORKER_MEMORY}
-      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_WEBUI_PORT=${SPARK_WORKER_WEBUI_PORT:-8081}
       - SPARK_WORKER_PORT=${SPARK_WORKER_PORT}
-      
-      # IP Privada de la EC2 Worker para la comunicación de retorno (AWS VPC Intra-routing)
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
-    ports:
-      - "${SPARK_WORKER_WEBUI_PORT}:8081"         # UI Web del Worker (Mapeada al 8182 externo)
-      - "${SPARK_WORKER_PORT}:${SPARK_WORKER_PORT}" # Puerto fijo de entrada interna (8881)
-
     volumes:
-      # Montajes limpios y validados bajo la estructura de Apache Spark
+      # Lectura de los pipelines
       - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
-      - /home/ubuntu/keppler/data/volumes/spark/workers/data:/opt/spark/work
-      - /home/ubuntu/keppler/data/volumes/spark/workers/logs:/opt/spark/logs
+      # Persistencia alineada a la arquitectura global
+      - /home/ubuntu/keppler/data/spark/worker/data:/opt/spark/work
+      - /home/ubuntu/keppler/data/spark/worker/logs:/opt/spark/logs
 
     restart: unless-stopped
 
-    # CRUCIAL: Bloqueo de secuencia. No arranca Spark hasta que el chown termine con éxito
     depends_on:
       fix-permissions:
         condition: service_completed_successfully
 
-    # Lista ejecutiva nativa libre de errores de escape de caracteres
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${SPARK_WORKER_WEBUI_PORT:-8081}')"]
       interval: 20s
       timeout: 10s
       retries: 3
       start_period: 15s
+      
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

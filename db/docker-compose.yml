@@ -1,70 +1,63 @@
 services:
-  # ---------------------------------------------------------
-  # SERVICIO 1: El Motor de Base de Datos (PostgreSQL)
-  # ---------------------------------------------------------
+  # ==============================================================================
+  # 1. MOTOR DE BASE DE DATOS (PostgreSQL)
+  # ==============================================================================
   postgres:
-
     image: postgres:15-alpine
-
-    # Nombre amigable para no ver IDs raros cuando hagamos 'docker ps'
     container_name: core-database
-
     restart: always
-
-    # MEMORIA COMPARTIDA (Shared Memory)
-    # Fundamental para Analítica de Datos. Por defecto Docker le da 64MB a Postgres.
-    # Cuando Airflow lance cientos de consultas, 64MB se ahogarán. Le damos 256MB 
-    # para que tenga una pista de aterrizaje amplia para mover datos en RAM.
+    
+    # Aumentamos el límite de conexiones (default 100) a 250 para soportar
+    # todos los workers concurrentes y el master sin que se queden en cola.
+    command: ["postgres", "-c", "max_connections=250"]
+    
+    # Memoria compartida aumentada (256MB) fundamental para cargas analíticas.
     shm_size: 256mb
-
+    
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - TZ=${TZ} # Zona horaria para que los logs coincidan con tu país
-
-    # PUERTOS (Izquierda:Host AWS -> Derecha:Contenedor)
-    # Postgres internamente siempre vive en el puerto 5432.
-    # Al exponerlo al 5432 del Host (tu instancia DB), permitimos que el 
-    # Master y los Workers se conecten a esta máquina por su IP privada.
+      - TZ=${TZ}
+      
     ports:
+      # Expuesto al host para que Master y Workers se conecten vía IP Privada
       - "5432:5432"
-
-    # VOLÚMENES (La Persistencia / "El Tubo Mágico")
-    # Derecha: La ruta exacta donde Postgres guarda los bits de las tablas por dentro.
-    # alzheimer_db_vol es un volumen administrado por docker
-    # y se guarda en la ruta /var/lib/docker/volumes/alzheimer_db_vol/_data
-    # Si se corre el comando docker compose down -v, el volumen se borrará y se pierde la DB
+      
     volumes:
-      - /home/ubuntu/keppler/data/volume/db_postgres:/var/lib/postgresql/data
-      # - /opt/keppler/data/database/keppler_metadata:/var/lib/postgresql/data
-
-    # HEALTHCHECK (Chequeo de salud)
-    # Un contenedor "corriendo" no significa que esté "listo para recibir conexiones".
-    # Cada 10 segundos, Docker ejecutará el comando 'pg_isready'.
-    # Si responde bien, Docker marcará el contenedor como "healthy" (sano).
+      # Persistencia de los datos físicos
+      - /home/ubuntu/keppler/data/postgres:/var/lib/postgresql/data
+      
     healthcheck:
+      # Asegura que la BD está lista para recibir peticiones antes de que Docker la marque "sana"
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ---------------------------------------------------------
-  # SERVICIO 2: Interfaz Visual (Adminer)
-  # ---------------------------------------------------------
+  # ==============================================================================
+  # 2. INTERFAZ GRÁFICA (Adminer)
+  # ==============================================================================
   adminer:
-    # Adminer es como un dBeaver o pgAdmin, pero en formato web ultra ligero.
+    # Cliente web ultra ligero tipo pgAdmin/dBeaver
     image: adminer:latest
     container_name: db-adminer-ui
     restart: always
-
-    # Podrás acceder poniendo en tu navegador: IP_PRIVADA_DB:8081 (o configurarlo en NPM)
+    
     ports:
-      - "8080:8080" # no pasa nada con airflow porque esta en una maquina independiente
-
-    # DEPENDENCIA
-    # Le dice a Docker: "No intentes arrancar la interfaz web hasta que 
-    # el servicio 'postgres' de arriba no esté encendido".
+      # No colisiona con el 8080 de Airflow porque la BD vive en una EC2 independiente
+      - "8080:8080"
+      
     depends_on:
       postgres:
         condition: service_healthy
+        
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

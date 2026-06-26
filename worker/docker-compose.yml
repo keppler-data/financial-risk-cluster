@@ -1,107 +1,33 @@
-# ==============================================================================
-# CLÚSTER WORKER - AIRFLOW 3.2.0
-# ==============================================================================
-
-# ==============================================================================
-# PLANTILLA BASE COMPARTIDA
-# Todo servicio que use "<<: *airflow-common" heredará esta configuración.
-# ==============================================================================
-x-airflow-common:
-
-  # Construimos imagen personalizada desde Dockerfile
-  &airflow-common
+x-airflow-common: &airflow-common
   build:
     context: ..
-
-    # Variables pasadas DURANTE BUILD
-    args:
-      EXTRA_REQUIREMENTS: ${EXTRA_REQUIREMENTS}
-
-  # Archivo .env local de ESTA instancia worker
   env_file:
     - .env
-
-  # Corremos como root para que el entrypoint pueda corregir permisos de volúmenes (logs/config)
-  user: "0:0"
-
-  # Volúmenes montados
+  # Evita problemas de permisos mapeando al usuario del host (ubuntu)
+  user: "${AIRFLOW_UID:-1000}:0"
   volumes:
-
-    # DAGs locales de esta instancia EC2
-    # El worker NECESITA tener acceso físico al código DAG
-    - /home/ubuntu/keppler/data-platform/pipelines/dags:/opt/airflow/dags # para encontrar los dags
-
-    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines # mapeo para que python encuentre toda las tareas, junto con pythonpath
-    
-    # Plugins Airflow compartidos
-    # - /opt/dags-alzheimer/plugins:/opt/airflow/plugins:ro
-
-    # Logs persistentes del worker
+    - /home/ubuntu/keppler/data-platform/pipelines/dags:/opt/airflow/dags
+    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines
     - ./logs:/opt/airflow/logs
-
-    # Configuración local Airflow
     - ./config:/opt/airflow/config
-
-    # volumen para entorno virtual
-    # - /opt/keppler/data-platform/.venv:/opt/airflow/.venv
+  logging:
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
-
-  # ==============================================================================
-  # CELERY WORKER
-  # Este servicio EJECUTA tareas enviadas por scheduler vía RabbitMQ.
-  # ==============================================================================
   airflow-worker:
-
     <<: *airflow-common
-
-    # Nombre visible del contenedor Docker
-    container_name: airflow-${NAME_DOCKER}
-
-    # Hostname interno Linux del contenedor
+    container_name: airflow-${NAME_DOCKER:-Worker-1}
     hostname: ${CELERY_HOSTNAME}
-
-    # puerto de los logs
     ports:
-      - "8793:8793"
-
-    # ----------------------------------------------------------------------------
-    # Comando principal del contenedor
-    #
-    # celery worker:
-    #   Arranca worker Celery de Airflow
-    #
-    # --autoscale=4,1
-    #   Máximo 4 procesos concurrentes
-    #   Mínimo 1 proceso vivo
-    #
-    # --hostname
-    #   Nombre lógico del worker en cluster
-    #
-    # --queues
-    #   Qué colas escucha este worker
-    # ----------------------------------------------------------------------------
-    command: > # Si usamos la terminal debemos especificar el comando airflow
-      bash -c "
-        airflow celery worker --autoscale=4,1 --queues=${QUEUES}
-      "
-
-    # Reinicia automáticamente si falla
+      - "8793:8793" # Puerto para que el Master consulte los logs locales (si falla S3)
+    # Autoscale 4,1 es ideal para EC2 de 2 Cores y 4GB RAM
+    command: airflow celery worker --autoscale=4,1 --queues=${QUEUES}
     restart: always
-
     environment:
-
-      # Evita problemas señales Linux/PID1
+      # Evita problemas con el manejo de señales de Linux (PID 1)
       DUMB_INIT_SETSID: "0"
-      # PYTHONPATH ya se gestiona internamente
-      # PYTHONPATH: /opt/airflow/dags
-
-      # ----------------------------------------------------------------------------
-      # Healthcheck
-      #
-      # Docker verifica periódicamente si el worker está vivo y respondiendo.
-      # Si falla el chequeo 5 veces consecutivas, Docker reinicia el contenedor.
-      # ----------------------------------------------------------------------------
     healthcheck:
       test: [ "CMD-SHELL", "celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d celery@$$HOSTNAME" ]
       interval: 30s

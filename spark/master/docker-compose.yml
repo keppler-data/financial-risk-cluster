@@ -1,33 +1,26 @@
-# ==============================================================================
-# CLÚSTER SPARK OFICIAL - MÓDULO MASTER (EC2 MASTER)
-# ==============================================================================
-
-# Fijamos el nombre del proyecto. Así Docker no se confunde si mueves las carpetas.
-name: keppler-spark-master
-
 services:
-
-  # ----------------------------------------------------------------------------
-  # CONTENEDOR DE INICIALIZACIÓN: Repara permisos automáticamente
-  # ----------------------------------------------------------------------------
+  # ==============================================================================
+  # 1. INIT: Reparación de permisos
+  # ==============================================================================
   fix-permissions:
     image: alpine:latest
-    user: "0:0" # Corre como root de forma temporal
+    user: "0:0"
     container_name: spark-master-init
     volumes:
-      # Montamos la carpeta raíz de datos de tu EC2
       - /home/ubuntu/keppler/data:/mnt/data
-    # Cambia el dueño a 1000:1000 y se apaga inmediatamente
+    # Asegura que la carpeta central de datos pertenezca al usuario ubuntu
     command: chown -R 1000:1000 /mnt/data
 
-  # ----------------------------------------------------------------------------
-  # SERVICIO PRINCIPAL: Spark Master
-  # ----------------------------------------------------------------------------
+  # ==============================================================================
+  # 2. SERVICIO PRINCIPAL: Spark Master
+  # ==============================================================================
   spark-master:
     image: apache/spark:${SPARK_VERSION}
     container_name: core-spark-master
-    user: "0:0" # Corre seguro como tu usuario ubuntu
-    network_mode: host # para que use su ip real
+    
+    # Corregido: Ahora sí corre verdaderamente como ubuntu (1000) en lugar de root (0)
+    user: "1000:0"
+    network_mode: host
     
     command: >
       bash -c "pip3 install --no-cache-dir numpy pandas pyarrow && /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
@@ -36,27 +29,28 @@ services:
       - TZ=${TZ}
       - SPARK_MASTER_PORT=${SPARK_MASTER_PORT}
       - SPARK_MASTER_WEBUI_PORT=${SPARK_MASTER_WEBUI_PORT}
-      # Forzamos al Master a anunciarse ante los Workers con su IP real de AWS
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
-    # ports:
-    #   - "${SPARK_MASTER_PORT}:7077"       # Comunicación RPC interna para Workers
-    #   - "${SPARK_MASTER_WEBUI_PORT}:8080" # UI Web expuesta externamente
-
     volumes:
+      # Lectura de los pipelines
       - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
-      - /home/ubuntu/keppler/data/volumes/spark/master/data:/opt/spark/work
-      - /home/ubuntu/keppler/data/volumes/spark/master/logs:/opt/spark/logs
+      # Persistencia de Spark limpia y alineada con la arquitectura de volúmenes
+      - /home/ubuntu/keppler/data/spark/master/data:/opt/spark/work
+      - /home/ubuntu/keppler/data/spark/master/logs:/opt/spark/logs
 
     restart: unless-stopped
 
-    # CONTROL DE FLUJO: Spark no arranca hasta que el fix de permisos termine con éxito
     depends_on:
       fix-permissions:
         condition: service_completed_successfully
 
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${SPARK_MASTER_WEBUI_PORT:-8080}')"]
       interval: 20s
       timeout: 10s
       retries: 3
+      
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -17,16 +17,9 @@ USER airflow
 # 5. BLINDAJE DEL PATH: Obligamos al contenedor a usar los binarios del usuario airflow
 ENV PATH="/home/airflow/.local/bin:${PATH}"
 
-# 6. ARGUMENTOS DE CONSTRUCCIÓN (Obligatorio declararlo antes de usarlo)
-ARG EXTRA_REQUIREMENTS=""
-
-# 7. INSTALAR LIBRERÍAS CORE + REQUISITOS EXTRA
-# Nota: Pasamos directamente las variables core y concatenamos el ARG de forma segura.
-# Usar la sintaxis ${EXTRA_REQUIREMENTS} asegura que Docker reemplace el valor correctamente aquí.
-RUN pip install --no-cache-dir \
-    gunicorn \
-    psycopg2-binary \
-    ${EXTRA_REQUIREMENTS}
+# 6. COPIAR Y EJECUTAR REQUIREMENTS
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 7. DIRECTORIO DE TRABAJO
 WORKDIR /opt/airflow

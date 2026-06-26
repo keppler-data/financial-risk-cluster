@@ -1,162 +1,78 @@
-# ==============================================================================
-# CLÚSTER MASTER - AIRFLOW 3.2.0
-# ==============================================================================
-
-# ==============================================================================
-# X-AIRFLOW-COMMON: ANCLA YAML (Plantilla Base)
-# Esto actúa como una plantilla. Todos los servicios de abajo "heredarán" esto.
-# ==============================================================================
 x-airflow-common: &airflow-common
   build:
-    # MUY IMPORTANTE: El contexto ".." significa que Docker saldrá de la carpeta 'master/' 
-    # y buscará el Dockerfile en la raíz '/opt/data-cluster/'.
     context: ..
-    args:
-      # Pasa la variable del .env al Dockerfile durante la compilación
-      EXTRA_REQUIREMENTS: ${EXTRA_REQUIREMENTS}
   env_file:
-    # Como el .env estará en la raíz (recomendado) o en master, ajusta esta ruta. 
-    # Aquí asumimos que el .env lo pusiste junto a este docker-compose.
     - .env
-  # environment:
-  #   - PYTHONPATH=${PYTHONPATH}
-  # Usa el usuario 50000 del sistema
-  user: "${AIRFLOW_UID:-50000}:0"
+  # Evita problemas de permisos en EC2 mapeando al usuario del host (ubuntu)
+  user: "${AIRFLOW_UID:-1000}:0"
   volumes:
-    # Ruta ABSOLUTA de tu EC2 : Ruta interna del contenedor
-    # MAPEO DE VOLÚMENES: Izquierda es la máquina Host (EC2), Derecha es el contenedor interno.
-    # Ruta EC2 : Ruta Contenedor : Permiso (ro = read-only)
-
-    - /home/ubuntu/keppler/data-platform/pipelines/dags/:/opt/airflow/dags # para encontrar los dags
-    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines # mapeo para que python encuentre toda las tareas, junto con pythonpath
-    - ./logs:/opt/airflow/logs # al dag_processor mete los dags por esta ruta
-    - ./config:/opt/airflow/config # para guardar la configuración
-    # - /opt/keppler/data-platform/plugins:/opt/airflow/plugins # para encontrar los plugins
-    # volumen para entorno virtual
-    # - /home/ubuntu/keppler/data-platform/.venv:/opt/airflow/.venv # sirve para cuando haga los entornos virtuales
+    - /home/ubuntu/keppler/data-platform/pipelines/dags/:/opt/airflow/dags
+    - /home/ubuntu/keppler/data-platform/pipelines:/opt/airflow/pipelines
+    - ./logs:/opt/airflow/logs
+    - ./config:/opt/airflow/config
+  logging:
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
-  # ==============================================================================
-  # 1. AIRFLOW-INIT (El Contenedor Desechable)
-  # Solo corre al inicio para crear las tablas en Postgres. Cuando termina, se apaga.
-  # ==============================================================================
   airflow-init:
     <<: *airflow-common
     container_name: airflow-init
-    # Al correr como root (0:0), el entrypoint oficial arreglará permisos automáticamente
     user: "0:0"
     command: >
       bash -c "
         until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
+          echo 'Waiting for metadata DB...';
+          sleep 2;
+        done;
         airflow db migrate
       "
 
-  # ==============================================================================
-  # 2. AIRFLOW-APISERVER (El Nuevo Frontend y Backend de Airflow 3)
-  # Reemplaza al antiguo 'webserver'. Sirve la UI en React y la API REST.
-  # ==============================================================================
   airflow-apiserver:
     <<: *airflow-common
     container_name: airflow-api-server
-    command: >
-      bash -c "
-        until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
-        exec airflow api-server
-      "
+    command: airflow api-server
     ports:
-      - "8080:8080" # Exponemos en el 8080 para que el Nginx Proxy siga funcionando
+      - "8080:8080"
     restart: always
     depends_on:
       airflow-init:
         condition: service_completed_successfully
 
-  # ==============================================================================
-  # 4. AIRFLOW-SCHEDULER (El Cerebro)
-  # Revisa los horarios de los DAGs y manda las tareas a RabbitMQ.
-  # ==============================================================================
   airflow-scheduler:
     <<: *airflow-common
     container_name: airflow-scheduler
-    command: >
-      bash -c "
-        until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
-
-        exec airflow scheduler
-      "
+    command: airflow scheduler
     restart: always
     depends_on:
       airflow-init:
         condition: service_completed_successfully
 
-  # ==============================================================================
-  # 5. AIRFLOW-DAG-PROCESSOR (El Lector de Código)
-  # Se encarga EXCLUSIVAMENTE de leer los archivos .py de la carpeta dags y parsearlos.
-  # ==============================================================================
   airflow-dag-processor:
     <<: *airflow-common
     container_name: airflow-dag-processor
-    command: >
-      bash -c "
-        until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
-
-        exec airflow dag-processor
-      "
+    command: airflow dag-processor
     restart: always
     depends_on:
       airflow-init:
         condition: service_completed_successfully
 
-  # ==============================================================================
-  # 6. AIRFLOW-TRIGGERER (Ahorro de Cómputo)
-  # Maneja los "Sensores Diferidos" (tareas que solo esperan a que pase algo).
-  # ==============================================================================
   airflow-triggerer:
     <<: *airflow-common
     container_name: airflow-triggerer
-    command: >
-      bash -c "
-        until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
-
-        exec airflow triggerer
-      "
+    command: airflow triggerer
     restart: always
     depends_on:
       airflow-init:
         condition: service_completed_successfully
 
-  # ==============================================================================
-  # 7. FLOWER (Monitor de RabbitMQ y Celery)
-  # UI gráfica para ver en tiempo real qué Worker está haciendo qué tarea.
-  # ==============================================================================
   flower:
     <<: *airflow-common
     container_name: airflow-flower
-    command: >
-      bash -c "
-        until airflow db check; do
-          echo 'Waiting for metadata DB...'
-          sleep 2
-        done
-
-        exec airflow celery flower
-      "
+    command: airflow celery flower
     ports:
-      - "5555:5555" # Apuntaremos el subdominio orion-flower a este puerto
+      - "5555:5555"
     restart: always
     depends_on:
       airflow-init:
