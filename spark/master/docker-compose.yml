@@ -9,9 +9,9 @@ services:
     user: "0:0"
     container_name: spark-master-init
     volumes:
-      - /home/ubuntu/keppler/data:/mnt/data
-    # Asegura que la carpeta central de datos pertenezca al usuario ubuntu
-    command: chown -R 1000:1000 /mnt/data
+      - /home/ubuntu/keppler/data/spark:/mnt/spark
+    command: >
+      sh -c "chown -R 1000:1000 /mnt/spark && chmod -R 775 /mnt/spark"
 
   # ==============================================================================
   # 2. SERVICIO PRINCIPAL: Spark Master
