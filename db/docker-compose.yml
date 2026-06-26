@@ -1,3 +1,5 @@
+name: keppler-db
+
 services:
   # ==============================================================================
   # 1. MOTOR DE BASE DE DATOS (PostgreSQL)

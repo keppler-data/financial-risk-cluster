@@ -1,3 +1,5 @@
+name: keppler-proxy
+
 services:
   # ==============================================================================
   # PROXY INVERSO Y GESTIÓN SSL (Nginx Proxy Manager)

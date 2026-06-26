@@ -1,3 +1,5 @@
+name: keppler-airflow-master
+
 x-airflow-common: &airflow-common
   build:
     context: ..

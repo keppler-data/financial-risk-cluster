@@ -1,3 +1,5 @@
+name: keppler-rabbitmq
+
 services:
   # ==============================================================================
   # BROKER DE MENSAJERÍA (RabbitMQ)

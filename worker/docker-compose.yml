@@ -1,3 +1,5 @@
+name: keppler-airflow-worker
+
 x-airflow-common: &airflow-common
   build:
     context: ..

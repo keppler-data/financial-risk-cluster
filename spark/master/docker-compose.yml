@@ -1,3 +1,5 @@
+name: keppler-spark-master
+
 services:
   # ==============================================================================
   # 1. INIT: Reparación de permisos
