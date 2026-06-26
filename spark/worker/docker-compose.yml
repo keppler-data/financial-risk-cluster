@@ -39,6 +39,8 @@ services:
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
 
     volumes:
+      # Fix de Java para que encuentre al usuario 1000 en el Sistema Operativo
+      - /etc/passwd:/etc/passwd:ro
       # Lectura de los pipelines
       - /home/ubuntu/keppler/data-platform/pipelines:/opt/spark/pipelines:ro
       # Persistencia alineada a la arquitectura global
