@@ -123,7 +123,18 @@ git clone -b dev https://github.com/keppler-data/financial-analytics-keppler.git
 git clone -b reconfig https://github.com/keppler-data/financial-risk-cluster.git cluster-config
 ```
 
-### 2. Orden de Encendido (`docker compose up -d`)
+### 2. Configuración de Variables y Sincronización de Nodos
+Dado que los repositorios proveen configuraciones base, es **crítico** que en los archivos `.env` (especialmente en los Workers) inyectes las direcciones IP reales de tu infraestructura de AWS:
+- **Bases de Datos:** `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` y `AIRFLOW__CELERY__RESULT_BACKEND` (Apuntan a la IP de la EC2 de Postgres).
+- **Broker:** `AIRFLOW__CELERY__BROKER_URL` (Apunta a la IP de la EC2 de RabbitMQ).
+- **Master:** `SPARK_MASTER_HOST` y `AIRFLOW__CORE__EXECUTION_API_SERVER_URL` (Apuntan a la IP de la EC2 Master).
+- **Red Local:** `CELERY_HOSTNAME` y `MY_PRIVATE_IP` (Deberás poner la IP Privada exacta de la EC2 **en donde** estás ejecutando el archivo).
+
+**Sincronización del Código Fuente (DAGs y Scripts):**
+Es indispensable que las carpetas clonadas de `data-platform/pipelines` sean idénticas en todas las EC2 (Master y Workers). 
+*Nota de Supervivencia:* Airflow 3 penaliza severamente los desajustes; si el Master despacha una tarea y el Worker no tiene el archivo `.py` exacto en su disco, la tarea entrará en un bucle eterno de `UP_FOR_RESCHEDULE` seguido de fallos. ¡Asegúrate de hacer `git pull` en la misma rama en todas las máquinas!
+
+### 3. Orden de Encendido (`docker compose up -d`)
 
 Inicia los servicios navegando a sus respectivas carpetas dentro de `cluster-config/` en este orden estricto:
 
@@ -138,6 +149,18 @@ Inicia los servicios navegando a sus respectivas carpetas dentro de `cluster-con
    - `cd worker` ➜ `docker compose up -d` *(En las EC2 Worker)*
 4. **Fase 4 (Ingress):**
    - `cd proxy` ➜ `docker compose up -d` *(Conecta los dominios a los puertos 8080 y 8082)*
+
+---
+
+## 🤖 Contexto para Desarrollo Asistido por IA (Data Platform)
+Si vas a usar este documento como contexto para que una IA te ayude a programar en tu repositorio de `data-platform`, asegúrate de que la IA sepa lo siguiente:
+
+1. **Versiones Core:** El clúster corre **Apache Airflow 3.x**, **Apache Spark 4.0.2**, **Python 3.12** y **Java 21**. Todo el código debe ser moderno y compatible con estas versiones (ej. usar TaskFlow API en Airflow y evitar librerías obsoletas).
+2. **Ejecución Distribuida de Spark:** Jamás usar `master="local[*]"` en producción. Los jobs de Spark deben enviarse al clúster usando la URL del master: `spark://21.0.2.203:7077`. Airflow debe orquestar esto idealmente usando el `SparkSubmitOperator`.
+3. **Rutas Internas (Mounts):**
+   - Dentro de los contenedores de Airflow, los DAGs viven en `/opt/airflow/dags` y las utilidades en `/opt/airflow/pipelines`.
+   - Dentro de los contenedores de Spark, los scripts de trabajo viven en `/opt/spark/pipelines` y los datos temporales en `/opt/spark/work`.
+4. **Dependencias de Python (Pip):** Si los jobs de Spark requieren librerías de Python de terceros, asegúrate de instalarlas en los contenedores o empaquetarlas, ya que los Workers están configurados con `pip install numpy pandas pyarrow` por defecto.
 
 ---
 *Desarrollado y optimizado con ❤️ para cargas analíticas distribuidas.*
