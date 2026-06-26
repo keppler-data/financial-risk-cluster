@@ -30,6 +30,7 @@ services:
     environment:
       - TZ=${TZ}
       - HOME=/opt/spark/work
+      - SPARK_USER=spark
       - SPARK_MASTER_PORT=${SPARK_MASTER_PORT}
       - SPARK_MASTER_WEBUI_PORT=${SPARK_MASTER_WEBUI_PORT}
       - SPARK_LOCAL_IP=${MY_PRIVATE_IP}
